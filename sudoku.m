@@ -1,86 +1,174 @@
-clc %borrar consola
-clear %borrar variables
+clc
+close all
+clear all
 %[7,8,4,1,9,6,2,3,5;3,2,1,5,8,4,6,9,7;9,5,6,3,2,7,4,1,8;2,9,7,4,5,1,3,8,6;8,4,5,9,6,3,1,7,2;6,1,3,8,7,2,9,5,4;1,7,9,6,4,5,8,2,3;4,3,2,7,1,8,5,6,9;5,6,8,2,3,9,7,4,1]
-%  Parameters:
-N=32; %Numero de candidatos
-Gen=22000; %Numero de generaciones
-%    Input un sudoku sin resolver
-ssudoku = input( ' Cargar sudoku'': ' );
+%------------Parametros Iniciales------------
+N=16;                            %Numero de candidatos
+Gen1=3000;                       %Numero de generaciones
+Gen2=Gen1+2000;                  %Numero de generaciones
+Mut=0.001;                       %probabilidad de mutacion
+ex=0;
+g=0;
+%------------Parametros Iterativos-------------
+minimo=zeros(1,Gen2);             %Se les asigna un valor inicial   
+maximo=zeros(1,Gen2);             %a los parametros que cambian
+candidatos=zeros(9,9,N);         %de tama?o con cada iteracion,
+unix=zeros(1,9);                 %para que tengan un tama?o fijo  
+uniy=zeros(1,9);                 %desde el principio y se ahorre 
+unic=zeros(1,9);                 %tiempo de computo. 
+fitness=zeros(1,N);
+%------------Sudoku Inicial a resolver--------
+ssudoku=input('Cargar sudoku'': ' );
 tic
-v=find(ssudoku>0);%encuentra LOS INDICES de la matriz ssudoku que no son cero
-                 %y que por lo tanto no pueden cambiar
-                 
-%Crear una poblaci?n inicial 
-for ii=1:N %crea una cantidad N de candidatos
-    cand=randi(9,9); %se llenan las casillas vacias del sudoku de manera aleatoria
-    cand(v)=ssudoku(v);%se fijan los numeros que vienen originalmente
-    candidatos(:,:,ii)=cand; %se guarda al candidato en un arreglo de 9x9xN
+v=find(ssudoku>0);               %indices de valores fijos                 
+%------------Poblacion Inicial----------------
+for ii=1:N
+    cand=randi(9,9);
+    cand(v)=ssudoku(v);
+    candidatos(:,:,ii)=cand;
 end
-
-for generacion=1:Gen %se comienza el loop evolutivo
-for f=1:N %para cada candidato se evaluara el fitness
-M=candidatos(:,:,f);    
-for x=1:9 %filas
-    unix(x)=9-length(unique(M(x,:))); %cuenta la cantidad de repeticiones que hay por fila
+%----------Evaluacion de funcion Fitness------
+for generacion=1:Gen2
+for f=1:N
+M=candidatos(:,:,f);  
+for x=1:9                          %filas
+    unix(x)=9-length(unique(M(x,:)));
 end    
-fitnes(f)=sum(unix); %fitness filas
-
-for y=1:9%columnas
-        uniy(y)=9-length(unique(M(:,y)));%cuenta la cantidad de repeticiones que hay por columna     
+for y=1:9                          %columnas
+        uniy(y)=9-length(unique(M(:,y)));     
 end
-fitnes(f)=fitnes(f)+sum(uniy);   %fitness columnas
-    for i=1:3%cuadrantes
-        for j=1:3%cuenta la cantidad de repeticiones que hay por cuadrante
-            unic(i,j)=9-length(unique(M(3*i-2:3*i,3*j-2:3*j))); %fitness cuadrantes
-            
+    for i=1:3                      %cuadrantes
+        for j=1:3
+            unic(i,j)=9-length(unique(M(3*i-2:3*i,3*j-2:3*j)));         
         end
     end
-    fitnes(f)=fitnes(f)+sum(sum(unic)); %%se suma todo el fitness   
+    fitness(f)=sum(unix)+sum(uniy)+sum(sum(unic));    
 end
-if fitnes(fitnes==0)==0 %si el programa detecta que algun candidato
-    %tiene fitness cero
-   
-    break %se detiene el programa
+%--------Condicion de salida-----------------
+if fitness(fitness==0)==0 
+    break 
 end
-minfit=sort(fitnes); %vemos el minimo fitness
-ind=find(fitnes<=minfit(N/2)); %indices de los mejores sudokus candidatos
-indp=find(fitnes>=minfit(N/2)); %indices de los peores sudokus candidatos
-ind=ind(1:N/2); %determina que los mejores son solo la mitad con menor fitness
-perdedores=candidatos(:,:,indp); %los peores son la otra mitad
-papas=candidatos(:,:,ind); %quedan como progenitores los mejores
-for p=1:N/2 %damos un chance de que los perdedores tambi?n se reproduzcan
-    prob=rand; 
-    if prob>.95 %solo hay un 5% de probabilidad de que esto pase
+%--------Condicion de reproduccion----------
+minfit=sort(fitness);  
+if minfit(1:2)>17
+    g=g+1;
+    if g>=Gen1
+        break
+    end
+%------------Seleccion de Padres(1)------------
+ind=find(fitness<=minfit(N/2));
+indp=find(fitness>=minfit(N/2));
+ind=ind(1:N/2);
+perdedores=candidatos(:,:,indp);
+papas=candidatos(:,:,ind);
+for p=1:N/2
+    prob=rand;
+    if prob>.95 
         papas(:,:,p)=perdedores(:,:,p);
     end
 end
+%------------Generacion de nuevos candidatos(1)----------------
 candidatos(:,:,1:N/2)=papas;
-for can=N/2+1:3*N/4 %aqui se crean a los hijos mezclando las filas de los papas
+for can=N/2+1:3*N/4
     candidatos(1:2:9,:,can)=papas(1:2:9,:,2*can-(N+1));
-    candidatos(2:2:8,:,can)=papas(2:2:8,:,2*can-N); %y se guardan como candidatos para
-    %la siguiente generaci?n
+    candidatos(2:2:8,:,can)=papas(2:2:8,:,2*can-N);
 end
-for can=3*N/4+1:N %aqui se crean a los hijos mezclando las columnas de los papas
+for can=3*N/4+1:N
     candidatos(:,1:2:9,can)=papas(:,1:2:9,2*can-3*N/2);
-    candidatos(:,2:2:8,can)=papas(:,2:2:8,2*can-(3*N/2+1));%y se guardan como candidatos para
-    %la siguiente generaci?n
+    candidatos(:,2:2:8,can)=papas(:,2:2:8,2*can-(3*N/2+1));
 end
-for mut=1:25 %damos pie a una peque?a mutacion con el fin de que no se estanque
-    casilla=randi(81*N);
+count=round(Gen1/20);
+if mod(generacion,count)==0
+    porcentaje=generacion*5/count;
+    tiempo=toc;
+    mensaje=[num2str(porcentaje),'% en ',num2str(tiempo),' segundos con un fitness minimo de:', num2str(minfit(1))];
+    disp(mensaje)
+end
+%------------Seleccion de Padres(2)------------
+else 
+    if ex==0
+exc=find(fitness<=minfit(16));
+exc=exc(1:16);
+candidatos=candidatos(:,:,exc);
+N=16;
+ex=1;
+mensaje=['Comienza etapa 2 en generacion: ', num2str(generacion)];
+disp(mensaje)
+    end
+ind=find(fitness<=minfit(N/2));
+ind=ind(1:N/2);
+indp=sort(find(fitness>=minfit(N/2)));
+indp=indp(1:N/2);
+perdedores=candidatos(:,:,indp);
+papas=candidatos(:,:,ind);
+for p=1:N/2
+    prob=rand;
+    if prob>.95 
+        papas(:,:,p)=perdedores(:,:,p);
+    end
+end
+%------------Generacion de nuevos candidatos(2)----------------
+candidatos(:,:,1:N/2)=papas;
+for can=N/2+1:3*N/4
+     p1=papas(:,:,2*can-(N+1));
+     p2=papas(:,:,2*can-(N));
+    for i=1:9
+        for j=1:9
+            if p1(i,j)==p2(i,j)
+                candidatos(i,j,can)=p1(i,j);
+                candidatos(i,j,can+N/4)=p1(i,j);
+            else
+                candidatos(i,j,can)=randi(9);
+                candidatos(i,j,can+N/4)=randi(9);
+            end
+        end
+    end
+end 
+count=round(Gen2/20);
+if mod(generacion,count)==0
+    porcentaje=generacion*5/count;
+    tiempo=toc;
+    mensaje=[num2str(porcentaje),'% en ',num2str(tiempo),' segundos con un fitness minimo de:', num2str(minfit(1))];
+    disp(mensaje)
+end
+end
+%-----------Mutacion de la poblacion-----------------------
+for mut=1:round(81*N*Mut)
+   casilla=randi(81*N);
    candidatos(casilla)=randi(9);
 end
-for candidato=1:N %respetamos los valores fijos
+for candidato=1:N
     cand=candidatos(:,:,candidato);
     cand(v)=ssudoku(v);
     candidatos(:,:,candidato)=cand;
 end
-minimo(generacion)=minfit(1); %observamos la evolucion del fitness
+minimo(generacion)=minfit(1);
+maximo(generacion)=minfit(end);
 end
-plot(minimo) %Ploteamos el fitness
+%--------Despliegue de Resultados-----------------------
+tiempo=(toc);
+plot(minimo(1:generacion));
+umin=unique(minimo(1:generacion));
+imax=unique(maximo(1:generacion));
+if fitness(fitness==0)==0
+sol=find(fitness==0);
+mensaje=('    ');
+mensaje1=['Se ha encontrado la solucion en ',num2str(tiempo),' segundos y ' num2str(generacion),' generaciones'];
+mensaje2=['la solucion es el candidato ',num2str(sol(1))];
+mensaje3=num2str(candidatos(:,:,sol(1)));
+disp(mensaje)
+disp(mensaje1)
+disp(mensaje2)
+% disp(mensaje3)
 drawSudoku(ssudoku) %mostramos el Sudoku ingresado
-if find(fitnes==0)
-    drawSudoku(candidatos(:,:,find(fitnes==0))) %Mostramos el Sudoku Final
+drawSudoku(candidatos(:,:,sol(1))) %Mostramos el Sudoku Final
 else
-    input('No se puede resolver')
+    mensaje=('    ');
+    mensaje1=('No se ha podido encontrar la solucion');
+    mensaje2=['se llego a un minimo de fitness ', num2str(minfit(1))];
+    disp(mensaje)
+    disp(mensaje1)
+    disp(mensaje2)
 end
-toc %decimos cuanto duro el programa corriendo
+faltantes=length(ssudoku(ssudoku==0))
+find(fitness==0)
