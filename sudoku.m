@@ -6,7 +6,8 @@ clear all
 N=16;                            %Numero de candidatos
 Gen1=3000;                       %Numero de generaciones
 Gen2=Gen1+2000;                  %Numero de generaciones
-Mut=0.001;                       %probabilidad de mutacion
+Mut=0.01;                        %probabilidad de mutacion
+val=15;
 ex=0;
 g=0;
 %------------Parametros Iterativos-------------
@@ -20,6 +21,7 @@ fitness=zeros(1,N);
 %------------Sudoku Inicial a resolver--------
 ssudoku=input('Cargar sudoku'': ' );
 tic
+faltantes=length(ssudoku(ssudoku==0));
 v=find(ssudoku>0);               %indices de valores fijos                 
 %------------Poblacion Inicial----------------
 for ii=1:N
@@ -50,7 +52,7 @@ if fitness(fitness==0)==0
 end
 %--------Condicion de reproduccion----------
 minfit=sort(fitness);  
-if minfit(1:2)>17
+if minfit(1:3)>val
     g=g+1;
     if g>=Gen1
         break
@@ -77,28 +79,25 @@ for can=3*N/4+1:N
     candidatos(:,1:2:9,can)=papas(:,1:2:9,2*can-3*N/2);
     candidatos(:,2:2:8,can)=papas(:,2:2:8,2*can-(3*N/2+1));
 end
-count=round(Gen1/20);
-if mod(generacion,count)==0
-    porcentaje=generacion*5/count;
-    tiempo=toc;
-    mensaje=[num2str(porcentaje),'% en ',num2str(tiempo),' segundos con un fitness minimo de:', num2str(minfit(1))];
-    disp(mensaje)
-end
 %------------Seleccion de Padres(2)------------
 else 
     if ex==0
-exc=find(fitness<=minfit(16));
-exc=exc(1:16);
-candidatos=candidatos(:,:,exc);
-N=16;
-ex=1;
+% exc=find(fitness<=minfit(16));
+% exc=exc(1:16);
+% candidatos=candidatos(:,:,exc);
+% N=16;
+ ex=1;
+% exc=sort(exc);
+% ind=1:8;
+% indp=9:16;
 mensaje=['Comienza etapa 2 en generacion: ', num2str(generacion)];
 disp(mensaje)
-    end
-ind=find(fitness<=minfit(N/2));
+    else
+ind=sort(find(fitness<=minfit(N/2)));
 ind=ind(1:N/2);
 indp=sort(find(fitness>=minfit(N/2)));
 indp=indp(1:N/2);
+    end
 perdedores=candidatos(:,:,indp);
 papas=candidatos(:,:,ind);
 for p=1:N/2
@@ -124,13 +123,6 @@ for can=N/2+1:3*N/4
         end
     end
 end 
-count=round(Gen2/20);
-if mod(generacion,count)==0
-    porcentaje=generacion*5/count;
-    tiempo=toc;
-    mensaje=[num2str(porcentaje),'% en ',num2str(tiempo),' segundos con un fitness minimo de:', num2str(minfit(1))];
-    disp(mensaje)
-end
 end
 %-----------Mutacion de la poblacion-----------------------
 for mut=1:round(81*N*Mut)
@@ -142,24 +134,41 @@ for candidato=1:N
     cand(v)=ssudoku(v);
     candidatos(:,:,candidato)=cand;
 end
+%-------------Estadisticas--------------------
 minimo(generacion)=minfit(1);
 maximo(generacion)=minfit(end);
+count=round(Gen2/20);
+if mod(generacion,count)==0
+    porcentaje=generacion*5/count;
+    tiempo=toc;
+    mensaje=[num2str(porcentaje),'% en ',num2str(tiempo),' segundos con un fitness minimo de:', num2str(minfit(1))];
+    disp(mensaje)
+end
 end
 %--------Despliegue de Resultados-----------------------
 tiempo=(toc);
 plot(minimo(1:generacion));
+title('Minimo Fitness a traves de Iteraciones')
+xlabel('Iteraciones')
+ylabel('Fitness')
+hold on
+val=ones(1,generacion)*val;
+plot(val,'g')
+hold off
 umin=unique(minimo(1:generacion));
 imax=unique(maximo(1:generacion));
 if fitness(fitness==0)==0
 sol=find(fitness==0);
 mensaje=('    ');
 mensaje1=['Se ha encontrado la solucion en ',num2str(tiempo),' segundos y ' num2str(generacion),' generaciones'];
-mensaje2=['la solucion es el candidato ',num2str(sol(1))];
-mensaje3=num2str(candidatos(:,:,sol(1)));
+mensaje2=['El original y su solucion es el candidato ',num2str(sol(1))];
+mensaje3=[num2str(ssudoku),zeros(9,9),num2str(candidatos(:,:,sol(1)))];
+mensaje4=['Habian ',num2str(faltantes), ' casillas faltantes'];
 disp(mensaje)
 disp(mensaje1)
 disp(mensaje2)
-% disp(mensaje3)
+disp(mensaje3)
+disp(mensaje4)
 drawSudoku(ssudoku) %mostramos el Sudoku ingresado
 drawSudoku(candidatos(:,:,sol(1))) %Mostramos el Sudoku Final
 else
